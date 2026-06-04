@@ -74,6 +74,7 @@ pip install -r requirements.txt
 - `numpy`
 - `jinja2`
 - `natsort`
+- `flask`
 
 ## Windows 安装 PaddlePaddle 的注意事项
 
@@ -97,7 +98,7 @@ pip install paddlepaddle
 4. 再安装其他依赖：
 
 ```powershell
-pip install paddleocr opencv-python pillow pillow-heif numpy jinja2 natsort
+pip install paddleocr opencv-python pillow pillow-heif numpy jinja2 natsort flask
 ```
 
 如果仍然失败，请到 PaddlePaddle 官网查看与你的 Python 版本匹配的 Windows 安装命令。没有安装成功时，本项目会在终端和 `output/errors.log` 给出清晰提示。
@@ -123,7 +124,7 @@ chat_ocr_project/screenshots/
 
 HEIC / HEIF 会在 OCR 前通过 `pillow-heif` 解码为 RGB，再转换为 OpenCV 使用的 BGR 图像，原始 `screenshots/` 图片不会被修改。iPhone 拍摄图片的 EXIF 方向信息会自动校正。
 
-## 运行
+## 命令行模式
 
 ```powershell
 cd C:\Users\Salt2\Downloads\小学搜题酱\chat_ocr_project
@@ -133,6 +134,51 @@ python main.py
 
 如果 `screenshots/` 不存在，程序会自动创建。  
 如果 `screenshots/` 为空，程序会提示你放入截图后退出，不会报错。
+
+## 一键启动
+
+方式 1：双击项目根目录中的：
+
+```text
+启动网页OCR.bat
+```
+
+脚本会自动启动网页 OCR 服务，并打开：
+
+```text
+http://127.0.0.1:5000
+```
+
+方式 2：命令行启动：
+
+```powershell
+python web_app.py
+```
+
+然后浏览器会自动打开上传页面。如果浏览器没有自动打开，可以手动访问 `http://127.0.0.1:5000`。
+
+## 网页模式
+
+v1.2 新增本地网页上传识别入口。启动本地服务：
+
+```powershell
+python web_app.py
+```
+
+浏览器会自动打开：
+
+```text
+http://127.0.0.1:5000
+```
+
+网页模式支持拖拽或点击选择多张图片，支持 `.png`、`.jpg`、`.jpeg`、`.webp`、`.heic`、`.heif`。上传图片只在本机处理，不会上传网络。
+
+注意：
+
+- 网页模式不会修改 `screenshots/`。
+- 上传文件会保存到 `output/uploads/` 的单次批处理目录中。
+- 每次网页识别会刷新 `output/data.json`、`output/chat.txt`、`output/chat.html`、`output/review.html`。
+- 浏览器可能无法直接预览 HEIC/HEIF 原图，但 OCR 会复用现有 `pillow-heif` 解码流程处理。
 
 ## 输出文件
 

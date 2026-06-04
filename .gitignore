@@ -7,6 +7,7 @@ env/
 
 *.log
 output/debug/
+output/uploads/
 
 output/
 screenshots/

@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>聊天记录 OCR 上传识别</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      color: #1f2937;
+      background: #f3f5f8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f3f5f8;
+    }
+
+    main {
+      width: min(980px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 48px;
+    }
+
+    .hero {
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .subtitle {
+      color: #667085;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .card {
+      width: 100%;
+      background: #fff;
+      border: 1px solid #e4e7ec;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(16, 24, 40, .06);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .upload-card {
+      padding: 24px;
+    }
+
+    .drop-zone {
+      display: flex;
+      min-height: 230px;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed #98a2b3;
+      border-radius: 12px;
+      background: #fbfcfe;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .drop-zone.dragover,
+    .drop-zone:focus-within {
+      border-color: #2563eb;
+      background: #eef4ff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+    }
+
+    .drop-content {
+      max-width: 580px;
+      padding: 26px;
+      text-align: center;
+    }
+
+    .upload-icon {
+      display: inline-flex;
+      width: 54px;
+      height: 54px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: #e8f0ff;
+      color: #1d4ed8;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .drop-title {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .format-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 14px;
+    }
+
+    .format-pill,
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .format-pill {
+      background: #f2f4f7;
+      color: #475467;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-list {
+      margin-top: 18px;
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fcfcfd;
+    }
+
+    .file-empty {
+      padding: 14px 16px;
+      color: #667085;
+      font-size: 14px;
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid #eef0f4;
+      font-size: 14px;
+    }
+
+    .file-row:first-child {
+      border-top: 0;
+    }
+
+    .file-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .file-meta {
+      color: #667085;
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 18px;
+    }
+
+    .primary-button,
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+    }
+
+    .primary-button {
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, .22);
+    }
+
+    .primary-button:hover:not(:disabled),
+    .link-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-button:disabled {
+      background: #b8c0cc;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .notice {
+      display: none;
+      margin-top: 12px;
+      color: #b42318;
+      font-size: 14px;
+    }
+
+    .notice.show {
+      display: block;
+    }
+
+    .error-card {
+      border-color: #fecdca;
+      background: #fffbfa;
+      color: #b42318;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      background: #fcfcfd;
+      padding: 14px;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 24px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .stat-label {
+      display: block;
+      margin-top: 4px;
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .output-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .link-button {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .result-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .result-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .result-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .tag-ok {
+      background: #dcfae6;
+      color: #067647;
+    }
+
+    .tag-error {
+      background: #fee4e2;
+      color: #b42318;
+    }
+
+    .summary {
+      width: 100%;
+      min-height: 68px;
+      margin: 10px 0 0;
+      padding: 12px;
+      border: 1px solid #eef0f4;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #344054;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, "Microsoft YaHei", monospace;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .muted {
+      color: #667085;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 0;
+      }
+
+      main {
+        width: min(100% - 20px, 980px);
+        padding-top: 22px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .file-row {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+
+      .actions {
+        justify-content: stretch;
+      }
+
+      .primary-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <h1>聊天记录 OCR 上传识别</h1>
+      <p class="subtitle">本地处理截图，支持多图拖拽上传，不会修改 screenshots/ 原文件。</p>
+    </header>
+
+    <section class="card upload-card">
+      <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+        <label id="drop-zone" class="drop-zone" for="file-input" tabindex="0">
+          <span class="drop-content">
+            <span class="upload-icon">↑</span>
+            <span class="drop-title">拖拽图片到这里，或点击选择文件</span>
+            <span class="muted">支持多张图片，按选择顺序依次识别。</span>
+            <span class="format-row" aria-label="支持格式">
+              <span class="format-pill">PNG</span>
+              <span class="format-pill">JPG</span>
+              <span class="format-pill">JPEG</span>
+              <span class="format-pill">WEBP</span>
+              <span class="format-pill">HEIC</span>
+              <span class="format-pill">HEIF</span>
+            </span>
+          </span>
+        </label>
+        <input id="file-input" type="file" name="images" multiple accept=".png,.jpg,.jpeg,.webp,.heic,.heif">
+        <div id="file-list" class="file-list">
+          <div class="file-empty">尚未选择文件</div>
+        </div>
+        <div id="form-notice" class="notice">请先选择至少一张图片。</div>
+        <div class="actions">
+          <button id="submit-button" class="primary-button" type="submit" disabled>开始识别</button>
+        </div>
+      </form>
+    </section>
+
+    {% if error %}
+      <section class="card error-card">
+        <strong>处理失败</strong>
+        <p>{{ error }}</p>
+      </section>
+    {% endif %}
+
+    {% if rejected %}
+      <section class="card">
+        <h2>未处理文件</h2>
+        <div class="result-grid">
+          {% for item in rejected %}
+            <article class="result-item">
+              <div class="result-head">
+                <div class="result-name">{{ item.name }}</div>
+                <span class="tag tag-error">失败</span>
+              </div>
+              <div class="summary">{{ item.error }}</div>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if result %}
+      <section class="card">
+        <h2>识别结果</h2>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-value">{{ result.total_images }}</span>
+            <span class="stat-label">总数</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">{{ result.success_count }}</span>
+            <span class="stat-label">成功</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">{{ result.failure_count }}</span>
+            <span class="stat-label">失败</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">{{ result.total_raw }}</span>
+            <span class="stat-label">OCR 文本框</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">{{ result.records|length }}</span>
+            <span class="stat-label">最终记录</span>
+          </div>
+        </div>
+
+        <div class="output-links">
+          <a class="link-button" href="{{ output_links.chat_html }}" target="_blank">chat.html</a>
+          <a class="link-button" href="{{ output_links.review_html }}" target="_blank">review.html</a>
+          <a class="link-button" href="{{ output_links.data_json }}" target="_blank">data.json</a>
+          <a class="link-button" href="{{ output_links.chat_txt }}" target="_blank">chat.txt</a>
+        </div>
+
+        <div class="result-grid">
+          {% for item in result.image_results %}
+            <article class="result-item">
+              <div class="result-head">
+                <div>
+                  <div class="result-name">{{ item.name }}</div>
+                  {% if item.success %}
+                    <div class="muted">文本框 {{ item.raw_count }} 个，记录 {{ item.record_count }} 条</div>
+                  {% endif %}
+                </div>
+                {% if item.success %}
+                  <span class="tag tag-ok">成功</span>
+                {% else %}
+                  <span class="tag tag-error">失败</span>
+                {% endif %}
+              </div>
+              {% if item.success %}
+                <div class="summary">{{ item.text_summary if item.text_summary else "未识别到文本" }}</div>
+              {% else %}
+                <div class="summary">{{ item.error }}</div>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  </main>
+
+  <script>
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const fileList = document.getElementById("file-list");
+    const submitButton = document.getElementById("submit-button");
+    const uploadForm = document.getElementById("upload-form");
+    const formNotice = document.getElementById("form-notice");
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      const kb = bytes / 1024;
+      if (kb < 1024) return `${kb.toFixed(1)} KB`;
+      return `${(kb / 1024).toFixed(2)} MB`;
+    }
+
+    function getExtension(name) {
+      const parts = name.split(".");
+      return parts.length > 1 ? parts.pop().toUpperCase() : "UNKNOWN";
+    }
+
+    function updateFileList() {
+      const files = Array.from(fileInput.files);
+      submitButton.disabled = files.length === 0;
+      formNotice.classList.remove("show");
+
+      if (files.length === 0) {
+        fileList.innerHTML = '<div class="file-empty">尚未选择文件</div>';
+        return;
+      }
+
+      fileList.innerHTML = files.map(file => `
+        <div class="file-row">
+          <div class="file-name">${file.name}</div>
+          <div class="file-meta">${formatSize(file.size)}</div>
+          <div class="file-meta">${getExtension(file.name)}</div>
+        </div>
+      `).join("");
+    }
+
+    dropZone.addEventListener("dragover", event => {
+      event.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", event => {
+      if (!dropZone.contains(event.relatedTarget)) {
+        dropZone.classList.remove("dragover");
+      }
+    });
+
+    dropZone.addEventListener("drop", event => {
+      event.preventDefault();
+      dropZone.classList.remove("dragover");
+      fileInput.files = event.dataTransfer.files;
+      updateFileList();
+    });
+
+    dropZone.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    fileInput.addEventListener("change", updateFileList);
+
+    uploadForm.addEventListener("submit", event => {
+      if (fileInput.files.length === 0) {
+        event.preventDefault();
+        formNotice.classList.add("show");
+        return;
+      }
+      submitButton.disabled = true;
+      submitButton.textContent = "识别中，请稍等...";
+    });
+  </script>
+</body>
+</html>

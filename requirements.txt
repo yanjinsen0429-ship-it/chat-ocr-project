@@ -6,3 +6,4 @@ pillow-heif
 numpy
 jinja2
 natsort
+flask

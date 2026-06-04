@@ -566,9 +566,13 @@ def render_chat_html(records: list[dict[str, Any]]) -> Path:
 def render_review_html(records: list[dict[str, Any]], screenshot_files: list[Path]) -> Path:
     path = OUTPUT_DIR / "review.html"
     template = get_template_env().get_template("review_template.html")
-    images = [{"name": p.name, "path": f"../screenshots/{p.name}"} for p in screenshot_files]
+    images = [{"name": p.name, "path": relative_to_output(p)} for p in screenshot_files]
     path.write_text(template.render(records=records, images=images), encoding="utf-8")
     return path
+
+
+def relative_to_output(path: Path) -> str:
+    return os.path.relpath(path.resolve(), OUTPUT_DIR.resolve()).replace("\\", "/")
 
 
 def get_image_size(image_path: Path) -> tuple[int, int]:
@@ -590,31 +594,47 @@ def get_image_size(image_path: Path) -> tuple[int, int]:
         return img.size
 
 
-def main() -> int:
-    ensure_directories()
-    config = load_config()
-    process_logger, error_logger = setup_logging()
-    screenshot_files = get_screenshot_files()
+def summarize_records(records: list[dict[str, Any]], limit: int = 600) -> str:
+    parts: list[str] = []
+    for record in records:
+        if record.get("type") == "time":
+            parts.append(f"[{record.get('time', '')}]")
+        elif record.get("type") == "message":
+            text = str(record.get("text", "")).strip()
+            if text:
+                parts.append(text)
+    summary = "\n".join(parts).strip()
+    if len(summary) > limit:
+        return summary[:limit].rstrip() + "..."
+    return summary
 
-    if not screenshot_files:
-        message = f"screenshots 文件夹为空：{SCREENSHOTS_DIR}\n请把 QQ 聊天截图放进去后重新运行 python main.py。"
-        print(message)
-        process_logger.info(message)
-        return 0
+
+def process_image_files(
+    image_paths: list[Path],
+    config: dict[str, Any] | None = None,
+    process_logger: logging.Logger | None = None,
+    error_logger: logging.Logger | None = None,
+) -> dict[str, Any]:
+    ensure_directories()
+    config = config or load_config()
+    if process_logger is None or error_logger is None:
+        process_logger, error_logger = setup_logging()
+
+    image_paths = [Path(path) for path in image_paths]
 
     try:
         ocr_engine = init_ocr_engine(config)
     except Exception as exc:
-        print(f"OCR 初始化失败：{exc}")
         error_logger.error("OCR 初始化失败：%s\n%s", exc, traceback.format_exc())
-        return 2
+        raise RuntimeError(f"OCR 初始化失败：{exc}") from exc
 
     all_records: list[dict[str, Any]] = []
+    image_results: list[dict[str, Any]] = []
     total_raw = 0
     total_filtered = 0
     success_count = 0
 
-    for image_path in screenshot_files:
+    for image_path in image_paths:
         try:
             process_logger.info("开始处理 %s", image_path.name)
             processed_path, transform = preprocess_image(image_path, config)
@@ -628,37 +648,101 @@ def main() -> int:
             kept = [item for item in normalized if not should_filter_text(item, image_size[0], image_size[1])]
             records = analyze_layout(normalized, image_path.name, image_size, config)
             all_records.extend(records)
+            filtered_count = max(0, len(normalized) - len(kept))
             total_raw += len(normalized)
-            total_filtered += max(0, len(normalized) - len(kept))
+            total_filtered += filtered_count
             success_count += 1
             process_logger.info(
                 "完成 %s: raw=%s filtered=%s records=%s processed=%s",
                 image_path.name,
                 len(normalized),
-                len(normalized) - len(kept),
+                filtered_count,
                 len(records),
                 processed_path,
+            )
+            image_results.append(
+                {
+                    "name": image_path.name,
+                    "path": str(image_path),
+                    "success": True,
+                    "error": "",
+                    "raw_count": len(normalized),
+                    "filtered_count": filtered_count,
+                    "record_count": len(records),
+                    "records": records,
+                    "text_summary": summarize_records(records),
+                    "processed_path": str(processed_path),
+                }
             )
         except Exception as exc:
             error_logger.error("处理失败 %s: %s\n%s", image_path.name, exc, traceback.format_exc())
             process_logger.info("失败 %s: %s", image_path.name, exc)
+            image_results.append(
+                {
+                    "name": image_path.name,
+                    "path": str(image_path),
+                    "success": False,
+                    "error": str(exc),
+                    "raw_count": 0,
+                    "filtered_count": 0,
+                    "record_count": 0,
+                    "records": [],
+                    "text_summary": "",
+                    "processed_path": "",
+                }
+            )
 
     before_dedup = len(all_records)
     all_records = deduplicate_records(all_records, bool(config.get("enable_dedup", True)))
     removed = before_dedup - len(all_records)
 
-    output_paths = [
-        write_data_json(all_records),
-        write_chat_txt(all_records),
-        render_chat_html(all_records),
-        render_review_html(all_records, screenshot_files),
-    ]
-    for output_path in output_paths:
+    output_paths = {
+        "data_json": write_data_json(all_records),
+        "chat_txt": write_chat_txt(all_records),
+        "chat_html": render_chat_html(all_records),
+        "review_html": render_review_html(all_records, image_paths),
+    }
+    for output_path in output_paths.values():
         process_logger.info("输出文件：%s", output_path)
 
+    return {
+        "records": all_records,
+        "image_results": image_results,
+        "total_images": len(image_paths),
+        "success_count": success_count,
+        "failure_count": len(image_paths) - success_count,
+        "total_raw": total_raw,
+        "total_filtered": total_filtered,
+        "dedup_removed": removed,
+        "output_paths": output_paths,
+        "output_dir": OUTPUT_DIR,
+    }
+
+
+def main() -> int:
+    ensure_directories()
+    config = load_config()
+    process_logger, error_logger = setup_logging()
+    screenshot_files = get_screenshot_files()
+
+    if not screenshot_files:
+        message = f"screenshots 文件夹为空：{SCREENSHOTS_DIR}\n请把 QQ 聊天截图放进去后重新运行 python main.py。"
+        print(message)
+        process_logger.info(message)
+        return 0
+
+    try:
+        result = process_image_files(screenshot_files, config, process_logger, error_logger)
+    except Exception as exc:
+        print(str(exc))
+        return 2
+
     print("处理完成")
-    print(f"截图总数：{len(screenshot_files)}，成功：{success_count}，失败：{len(screenshot_files) - success_count}")
-    print(f"OCR 文本框：{total_raw}，过滤：{total_filtered}，去重：{removed}，最终记录：{len(all_records)}")
+    print(f"截图总数：{result['total_images']}，成功：{result['success_count']}，失败：{result['failure_count']}")
+    print(
+        f"OCR 文本框：{result['total_raw']}，过滤：{result['total_filtered']}，"
+        f"去重：{result['dedup_removed']}，最终记录：{len(result['records'])}"
+    )
     print(f"输出目录：{OUTPUT_DIR}")
     return 0
 
