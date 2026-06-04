@@ -70,6 +70,7 @@ pip install -r requirements.txt
 - `paddlepaddle`
 - `opencv-python`
 - `pillow`
+- `pillow-heif`
 - `numpy`
 - `jinja2`
 - `natsort`
@@ -96,7 +97,7 @@ pip install paddlepaddle
 4. 再安装其他依赖：
 
 ```powershell
-pip install paddleocr opencv-python pillow numpy jinja2 natsort
+pip install paddleocr opencv-python pillow pillow-heif numpy jinja2 natsort
 ```
 
 如果仍然失败，请到 PaddlePaddle 官网查看与你的 Python 版本匹配的 Windows 安装命令。没有安装成功时，本项目会在终端和 `output/errors.log` 给出清晰提示。
@@ -115,8 +116,12 @@ chat_ocr_project/screenshots/
 - `.jpg`
 - `.jpeg`
 - `.webp`
+- `.heic`
+- `.heif`
 
 文件会按自然顺序处理，例如 `1.png`、`2.png`、`10.png` 会按 1、2、10 的顺序读取。
+
+HEIC / HEIF 会在 OCR 前通过 `pillow-heif` 解码为 RGB，再转换为 OpenCV 使用的 BGR 图像，原始 `screenshots/` 图片不会被修改。iPhone 拍摄图片的 EXIF 方向信息会自动校正。
 
 ## 运行
 
@@ -232,6 +237,16 @@ pip install paddlepaddle
 ```powershell
 pip install opencv-python
 ```
+
+### HEIC / HEIF 无法读取
+
+如果处理 `.heic` 或 `.heif` 时提示缺少依赖或解码失败，先确认已安装：
+
+```powershell
+pip install pillow-heif
+```
+
+如果依赖已安装但仍失败，通常是文件损坏、图片过大，或当前 `pillow-heif` 版本不支持该 HEIC 编码。可以先把图片另存为 PNG/JPEG 后再放入 `screenshots/`。
 
 ### 识别过程中某张图失败
 

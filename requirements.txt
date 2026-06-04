@@ -2,6 +2,7 @@ paddleocr
 paddlepaddle
 opencv-python
 pillow
+pillow-heif
 numpy
 jinja2
 natsort

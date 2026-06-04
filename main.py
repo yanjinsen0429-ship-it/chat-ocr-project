@@ -18,7 +18,8 @@ DEBUG_DIR = OUTPUT_DIR / "debug"
 TEMPLATES_DIR = BASE_DIR / "templates"
 CONFIG_PATH = BASE_DIR / "config.json"
 
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+HEIC_EXTENSIONS = {".heic", ".heif"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"} | HEIC_EXTENSIONS
 
 
 @dataclass
@@ -125,6 +126,44 @@ def get_screenshot_files() -> list[Path]:
         return sorted(files, key=natural_key)
 
 
+def is_heic_image(image_path: Path) -> bool:
+    return image_path.suffix.lower() in HEIC_EXTENSIONS
+
+
+def get_debug_image_path(image_path: Path) -> Path:
+    suffix = image_path.suffix.lower().lstrip(".") or "image"
+    return DEBUG_DIR / f"{image_path.stem}_{suffix}_processed.png"
+
+
+def read_image_for_preprocess(image_path: Path, cv2: Any, np: Any) -> Any:
+    if not is_heic_image(image_path):
+        return cv2.imdecode(np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
+
+    print(f"[HEIC] Processing: {image_path.name}")
+
+    try:
+        from PIL import Image, ImageOps
+        from pillow_heif import register_heif_opener
+    except ImportError as exc:
+        raise RuntimeError(
+            "缺少 HEIC/HEIF 解码依赖 pillow-heif。请运行 pip install -r requirements.txt，"
+            "或单独运行 pip install pillow-heif。"
+        ) from exc
+
+    try:
+        register_heif_opener()
+        with Image.open(image_path) as img:
+            img = ImageOps.exif_transpose(img)
+            rgb_image = img.convert("RGB")
+            rgb_array = np.array(rgb_image)
+        return cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
+    except Exception as exc:
+        raise RuntimeError(
+            f"HEIC/HEIF 图片解码失败：{image_path.name}。"
+            f"文件可能损坏、过大，或当前环境不支持该 HEIC 编码。原始错误：{exc}"
+        ) from exc
+
+
 def preprocess_image(image_path: Path, config: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     try:
         import cv2
@@ -132,9 +171,9 @@ def preprocess_image(image_path: Path, config: dict[str, Any]) -> tuple[Path, di
     except ImportError as exc:
         raise RuntimeError("缺少 opencv-python 或 numpy，请先运行 pip install -r requirements.txt") from exc
 
-    image = cv2.imdecode(np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
+    image = read_image_for_preprocess(image_path, cv2, np)
     if image is None:
-        raise RuntimeError("图片无法读取，可能格式损坏或路径包含异常字符")
+        raise RuntimeError(f"图片无法读取：{image_path.name}。文件可能损坏或格式不受支持")
 
     original_height, original_width = image.shape[:2]
     crop_top = int(original_height * float(config["crop_top_ratio"]))
@@ -149,7 +188,7 @@ def preprocess_image(image_path: Path, config: dict[str, Any]) -> tuple[Path, di
     blurred = cv2.GaussianBlur(denoised, (0, 0), sigmaX=1.0)
     sharpened = cv2.addWeighted(denoised, 1.45, blurred, -0.45, 0)
 
-    output_path = DEBUG_DIR / f"{image_path.stem}_processed.png"
+    output_path = get_debug_image_path(image_path)
     success, encoded = cv2.imencode(".png", sharpened)
     if not success:
         raise RuntimeError("预处理图片编码失败")
@@ -533,9 +572,21 @@ def render_review_html(records: list[dict[str, Any]], screenshot_files: list[Pat
 
 
 def get_image_size(image_path: Path) -> tuple[int, int]:
-    from PIL import Image
+    from PIL import Image, ImageOps
+
+    if is_heic_image(image_path):
+        try:
+            from pillow_heif import register_heif_opener
+        except ImportError as exc:
+            raise RuntimeError(
+                "缺少 HEIC/HEIF 解码依赖 pillow-heif，无法读取原图尺寸。"
+                "请运行 pip install -r requirements.txt。"
+            ) from exc
+        register_heif_opener()
 
     with Image.open(image_path) as img:
+        if is_heic_image(image_path):
+            img = ImageOps.exif_transpose(img)
         return img.size
 
 
