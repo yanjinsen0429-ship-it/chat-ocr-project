@@ -7,3 +7,6 @@ env/
 
 *.log
 output/debug/
+
+output/
+screenshots/
