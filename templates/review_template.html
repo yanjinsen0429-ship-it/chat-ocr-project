@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OCR review</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f5f6f8;
+      color: #20242a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 12px 18px;
+      background: #fff;
+      border-bottom: 1px solid #dde1e7;
+      font-size: 14px;
+      color: #59616c;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 46%) 1fr;
+      gap: 16px;
+      padding: 16px;
+      align-items: start;
+    }
+    .image-panel, .records {
+      min-width: 0;
+    }
+    .shot {
+      margin: 0 0 16px;
+      background: #fff;
+      border: 1px solid #dde1e7;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .shot h2 {
+      margin: 0;
+      padding: 10px 12px;
+      font-size: 14px;
+      border-bottom: 1px solid #edf0f3;
+      color: #404752;
+    }
+    .shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #e9edf2;
+    }
+    .record {
+      margin: 0 0 10px;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid #dde1e7;
+      border-radius: 8px;
+    }
+    .record h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #111827;
+    }
+    dl {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 6px 10px;
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    dt { color: #68717d; }
+    dd {
+      margin: 0;
+      min-width: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      header { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header>识别结果校对：左侧看截图，右侧按编号检查 data.json 中的记录。</header>
+  <main class="layout">
+    <section class="image-panel">
+      {% for image in images %}
+        <figure class="shot">
+          <h2>{{ image.name }}</h2>
+          <img src="{{ image.path }}" alt="{{ image.name }}">
+        </figure>
+      {% endfor %}
+    </section>
+    <section class="records">
+      {% for item in records %}
+        <article class="record">
+          <h3>#{{ loop.index }}</h3>
+          <dl>
+            <dt>type</dt><dd><code>{{ item.type }}</code></dd>
+            <dt>time</dt><dd>{{ item.time | default("", true) }}</dd>
+            <dt>sender</dt><dd>{{ item.sender | default("", true) }}</dd>
+            <dt>side</dt><dd><code>{{ item.side | default("", true) }}</code></dd>
+            <dt>text</dt><dd>{{ item.text | default("", true) }}</dd>
+            <dt>source_image</dt><dd><code>{{ item.source_image | default("", true) }}</code></dd>
+            <dt>bbox</dt><dd><code>{{ item.bbox | default("", true) }}</code></dd>
+            <dt>bbox_space</dt><dd><code>{{ item.bbox_space | default("", true) }}</code></dd>
+          </dl>
+        </article>
+      {% endfor %}
+    </section>
+  </main>
+</body>
+</html>

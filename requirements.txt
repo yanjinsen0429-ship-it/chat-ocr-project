@@ -1,0 +1,7 @@
+paddleocr
+paddlepaddle
+opencv-python
+pillow
+numpy
+jinja2
+natsort

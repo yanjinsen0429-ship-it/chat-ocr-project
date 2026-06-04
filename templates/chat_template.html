@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QQ chat OCR</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef1f5;
+      color: #1f2329;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+    .phone {
+      width: min(100%, 430px);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: #f2f3f5;
+      padding: 14px 12px 28px;
+    }
+    .image-mark {
+      margin: 18px auto 10px;
+      text-align: center;
+      color: #9aa0a6;
+      font-size: 12px;
+    }
+    .time {
+      margin: 16px auto 12px;
+      text-align: center;
+      color: #9298a0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .msg {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin: 11px 0;
+    }
+    .msg.right {
+      flex-direction: row-reverse;
+    }
+    .avatar {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8ca8c8, #d7dde6);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      overflow: hidden;
+    }
+    .msg.right .avatar {
+      background: linear-gradient(135deg, #6bbd89, #a2d6b7);
+    }
+    .content {
+      max-width: calc(100% - 52px);
+      min-width: 0;
+    }
+    .sender {
+      margin: 0 0 3px;
+      color: #737a84;
+      font-size: 12px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    .msg.right .sender {
+      text-align: right;
+    }
+    .bubble {
+      display: inline-block;
+      max-width: 310px;
+      padding: 9px 11px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
+      font-size: 15px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .msg.right .bubble {
+      background: #bfeeb1;
+    }
+    @media (max-width: 430px) {
+      .phone { width: 100%; }
+      .bubble { max-width: calc(100vw - 112px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="phone">
+    {% set ns = namespace(last_image="") %}
+    {% for item in records %}
+      {% if item.source_image and item.source_image != ns.last_image %}
+        <div class="image-mark">{{ item.source_image }}</div>
+        {% set ns.last_image = item.source_image %}
+      {% endif %}
+      {% if item.type == "time" %}
+        <div class="time">{{ item.time }}</div>
+      {% elif item.type == "message" %}
+        <section class="msg {{ item.side }}">
+          <div class="avatar">{{ (item.sender or "?")[:1] }}</div>
+          <div class="content">
+            <div class="sender">{{ item.sender }}</div>
+            <div class="bubble">{{ item.text }}</div>
+          </div>
+        </section>
+      {% endif %}
+    {% endfor %}
+  </main>
+</body>
+</html>

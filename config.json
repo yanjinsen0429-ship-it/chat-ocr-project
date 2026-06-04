@@ -1,0 +1,9 @@
+{
+  "ocr_engine": "paddleocr",
+  "scale": 1,
+  "crop_top_ratio": 0.12,
+  "crop_bottom_ratio": 0.04,
+  "confidence_threshold": 0.5,
+  "enable_dedup": true,
+  "default_sender": "UNKNOWN"
+}
